@@ -1,6 +1,6 @@
 {
-  "tag": null,
-  "snapshot_tag": null,
+  "tag": "snapshot-2026.07-genesis",
+  "snapshot_tag": "snapshot-2026.07-genesis",
   "schema_version": "1.0",
-  "published_at": null
+  "published_at": "2026-07-23T20:59:29.846Z"
 }
