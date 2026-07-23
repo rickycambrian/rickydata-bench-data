@@ -71,6 +71,31 @@ Heavy blobs are **separate sibling shards keyed by `run_id`** so a leaderboard q
 downloads them: `diffs-*` (generated patch), `proofs-*` (attestation bundle),
 `traces-*` (agent trace graph). Join on `run_id` only when you need them.
 
+### Calibrate model routing (no benchmark compute)
+
+Routing only needs **run-level outcomes**, not traces. Every run carries `item` (`repo#issue`),
+a resolved config, a pass signal (`proof_verified` / `test_passed`), and
+`cost_metrics.theoretical_cost_usd` — enough to build per-`(task, config)` cells offline:
+
+```python
+# per-(item, config) solve rate + mean cost — the routing substrate
+import gzip, json, glob, pandas as pd
+rows = [json.loads(l) for f in glob.glob('data/**/runs-*.jsonl.gz', recursive=True)
+        for l in gzip.open(f, 'rt') if 'runs-' in f]
+df = pd.DataFrame(rows)
+df = df[df['item'].notna() & ~df['infra_excluded']]        # drop synthetic + infra failures
+df['cost'] = df['cost_metrics'].apply(lambda c: (c or {}).get('theoretical_cost_usd'))
+cells = df.groupby(['item', 'config_id_resolved']).agg(
+    n=('run_id', 'size'),
+    passes=('test_passed', 'sum'),
+    solve_rate=('test_passed', 'mean'),
+    mean_cost=('cost', 'mean')).reset_index()
+```
+
+Traces (`traces-*`) are only needed for step-level behavioral analysis, not routing. Trace
+coverage is ~100% for recent runs and sparse for pre-July legacy runs (events were purged on
+ingest); see each release's `manifest` for the fidelity range.
+
 ### Verify a proof offline
 
 ```bash

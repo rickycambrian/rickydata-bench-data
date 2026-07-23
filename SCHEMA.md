@@ -24,7 +24,9 @@ without re-deriving anything.
 | `task_id` | string | → `tasks` shard |
 | `campaign_id` | string | e.g. `benchmark_matrix_current` |
 | `repo` | string | public source repo |
-| `issue_number` | number | |
+| `issue_number` | number \| null | backfilled from the task when the run row lacks it |
+| `source_repo` | string \| null | canonical repo from the task join |
+| `item` | string \| null | `repo#issue` — the key for per-task routing cells; `null` for synthetic tasks with no GitHub issue |
 | `created_at` | string (ISO 8601) | |
 | `created_at_ms` | number | epoch ms |
 
@@ -63,7 +65,7 @@ without re-deriving anything.
 |-------|------|-------|
 | `success` | boolean | |
 | `test_passed` | boolean | the correctness gate |
-| `quality_score` | number | closeness-to-merged score |
+| `quality_score` | object \| null | parsed; `composite` is the closeness-to-merged score |
 | `verification_level` | string | |
 | `evidence_class` | string | |
 | `proof_verified` | boolean | always `true` in this dataset |
