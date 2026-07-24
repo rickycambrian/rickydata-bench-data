@@ -1,7 +1,14 @@
 # Schema
 
 `schema_version` follows the pattern **`major.minor`**. A **minor** bump is additive (new
-fields only); a **major** bump can rename or remove fields. Current: **`1.0`**.
+fields only); a **major** bump can rename or remove fields. Current: **`1.1`**.
+
+**1.1 (additive):** run rows gain `task_complexity` / `task_issue_type` (denormalized from the
+task join, like `task_language`), `reproduce_command` (the exact CLI line to re-run the
+benchmark), `attestation_code_hash` / `attestation_image_digest` (TEE image provenance), and
+`teammate_provider_models` (multi-agent lineups). `task_language` now also falls back to a
+repo-level language map when the run's task row is absent (task-id fragmentation), since
+language is a property of the repo. All new fields are nullable — 1.0 consumers are unaffected.
 
 Every shard is gzipped JSON Lines (`.jsonl.gz`) — one JSON object per line. `manifest-*.json`
 is uncompressed and carries the sha256, byte size, and row count of every asset in its release.
@@ -37,6 +44,9 @@ Each row carries the raw config identity (as recorded) **and** the resolved iden
 | `issue_number` | number \| null | backfilled from the task when the run row lacks it |
 | `source_repo` | string \| null | canonical repo from the task join |
 | `item` | string \| null | `repo#issue` — the key for per-task routing cells; `null` for synthetic tasks with no GitHub issue |
+| `task_language` | string \| null | from the task join; falls back to the repo-level language when the task row is absent |
+| `task_complexity` | string \| null | from the task join (issue-specific — never inferred) |
+| `task_issue_type` | string \| null | from the task join (issue-specific — never inferred) |
 | `created_at` | string (ISO 8601) | |
 | `created_at_ms` | number | epoch ms |
 
@@ -82,6 +92,7 @@ Each row carries the raw config identity (as recorded) **and** the resolved iden
 | `proof_verified` | boolean | always `true` in this dataset |
 | `proof_verification_status` / `attestation_verdict` | string | |
 | `proof_manifest_hash` | string | |
+| `attestation_code_hash` / `attestation_image_digest` | string \| null | TEE image provenance |
 | `stop_reason` | string | |
 | `error` | string \| null | redacted |
 | `failure_category` / `failure_source` | string \| null | from trace summary |
@@ -99,6 +110,8 @@ Each row carries the raw config identity (as recorded) **and** the resolved iden
 |-------|------|-------|
 | `metadata` | object | redacted; skill-experiment arm tags kept |
 | `test_delta` | object | |
+| `reproduce_command` | string \| null | exact CLI line to re-run this benchmark (repo/issue/config/base commit — all public) |
+| `teammate_provider_models` | array \| null | provider/model lineup on multi-agent runs |
 | `trace_id` | string \| null | → `traces` shard |
 | `diff_present` / `trace_present` / `proof_present` | boolean | is there a sibling-shard row for this run |
 

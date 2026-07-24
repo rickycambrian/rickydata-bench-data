@@ -20,23 +20,36 @@ by design.
 
 ---
 
-## Quick start
+## Quick start — 60 seconds, no install
+
+Everything below uses only the Node standard library. Clone, then:
 
 ```bash
-# newest full snapshot + every daily delta after it, verified against manifest sha256
-node scripts/fetch-dataset.mjs --out ./data --verify
-
-# just the latest full snapshot
-node scripts/fetch-dataset.mjs --snapshot-only --out ./data
-
-# everything published after a given tag
-node scripts/fetch-dataset.mjs --since v2026.08.01 --out ./data
+node scripts/bench-cli.mjs fetch                 # download + sha256-verify the dataset → ./data
+node scripts/bench-cli.mjs info                  # what you have: runs, tasks, languages, dates
+node scripts/bench-cli.mjs leaderboard --by=model --production
+                                                 # solve% + cost per model, apples-to-apples cohort
+node scripts/bench-cli.mjs best --group=language --by=model
+                                                 # "which model is best for python? for rust?"
+node scripts/bench-cli.mjs task pallets/click#3277
+                                                 # every attempt on one issue + how to reproduce it
+node scripts/bench-cli.mjs routing --out cells.csv
+                                                 # per-(item, config) routing cells → CSV
+node scripts/bench-cli.mjs export --shard runs --csv runs.csv
+                                                 # flat CSV for spreadsheets / pandas / DuckDB
 ```
 
-`scripts/fetch-dataset.mjs` uses only the Node standard library (no `npm install`). It reads
-`index/latest.json` to find the current snapshot, then `index/releases.json` for the deltas
-after it, downloads each release's assets, and checks every asset's sha256 against its
-`manifest-*.json`.
+Useful flags: `--language python|rust|…`, `--complexity simple|medium|high`, `--repo owner/name`,
+`--issue-type bug_fix|…`, `--tier catalog` (only catalogued configs), `--min-runs N`, `--json`.
+Infra-caused failures (`infra_excluded`) are always excluded from rates.
+
+`fetch` wraps `scripts/fetch-dataset.mjs`, which also works standalone:
+
+```bash
+node scripts/fetch-dataset.mjs --out ./data --verify      # snapshot + all deltas after it
+node scripts/fetch-dataset.mjs --snapshot-only --out ./data
+node scripts/fetch-dataset.mjs --since v2026.08.01 --out ./data
+```
 
 ### Query the shards directly
 
@@ -80,20 +93,26 @@ downloads them: `diffs-*` (generated patch), `proofs-*` (attestation bundle),
 ### Calibrate model routing (no benchmark compute)
 
 Routing only needs **run-level outcomes**, not traces. Every run carries `item` (`repo#issue`),
-a resolved config, a pass signal (`proof_verified` / `test_passed`), and
-`cost_metrics.theoretical_cost_usd` — enough to build per-`(task, config)` cells offline:
+a resolved config, task facets (`task_language` / `task_complexity` / `task_issue_type`), a pass
+signal (`proof_verified` / `test_passed`), closeness-to-merged-PR (`quality_score.composite`),
+and `cost_metrics.theoretical_cost_usd`. One command emits the per-`(item, config)` cells:
+
+```bash
+node scripts/bench-cli.mjs routing --out cells.csv    # or .json
+```
+
+Each cell: `{item, language, complexity, issue_type, config_name, canonical_model, model_tier,
+billing_class, n, passes, solve_rate, mean_cost_usd, mean_closeness}` — feed it to a bandit /
+router as-is. The same aggregation in pandas, if you'd rather own it:
 
 ```python
-# per-(item, config) solve rate + mean cost — the routing substrate
-# runs-* globs both tiers; group by config_name so config_name_only rows (config_id_resolved
-# is null) keep their own identity instead of collapsing into one null bucket.
 import gzip, json, glob, pandas as pd
 rows = [json.loads(l) for f in glob.glob('data/**/runs-*.jsonl.gz', recursive=True)
         for l in gzip.open(f, 'rt')]
 df = pd.DataFrame(rows)
 df = df[df['item'].notna() & ~df['infra_excluded']]        # drop synthetic + infra failures
 df['cost'] = df['cost_metrics'].apply(lambda c: (c or {}).get('theoretical_cost_usd'))
-cells = df.groupby(['item', 'config_name']).agg(
+cells = df.groupby(['item', 'config_name']).agg(          # config_name keeps uncatalogued arms distinct
     n=('run_id', 'size'),
     passes=('test_passed', 'sum'),
     solve_rate=('test_passed', 'mean'),
@@ -172,7 +191,9 @@ watch results live, and — once verified — they flow into a future daily batc
    onboarding are operator-assisted today; the self-serve path is a hand-picked issue URL.)*
 3. **Launch a run** against the Agent Gateway with your config (model + engine + thinking
    effort + any tool overlay). The run resolves the issue in the TEE and scores closeness to
-   the merged PR.
+   the merged PR. Most published run rows carry a `reproduce_command` — the exact CLI line
+   that produced them (`bench-cli.mjs task <repo#issue>` prints one) — so you can rerun any
+   existing benchmark verbatim.
 4. **Watch it live** on [bench.rickydata.org](https://bench.rickydata.org) — the run, its
    compare view, and its trace appear as it executes, before any batch.
 5. **It lands here.** Once the run is proof-verified and its campaign is public, the next daily
