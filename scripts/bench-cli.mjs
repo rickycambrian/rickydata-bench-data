@@ -24,10 +24,15 @@ import { gunzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const BOOL_FLAGS = new Set(['production', 'json']);
 function arg(name, fallback) {
-  const hit = process.argv.find((a) => a === `--${name}` || a.startsWith(`--${name}=`));
-  if (!hit) return fallback;
-  return hit.includes('=') ? hit.slice(hit.indexOf('=') + 1) : true;
+  // accepts both --name=value and --name value
+  const idx = process.argv.findIndex((a) => a === `--${name}` || a.startsWith(`--${name}=`));
+  if (idx === -1) return fallback;
+  const hit = process.argv[idx];
+  if (hit.includes('=')) return hit.slice(hit.indexOf('=') + 1);
+  const next = process.argv[idx + 1];
+  return BOOL_FLAGS.has(name) || next === undefined || next.startsWith('--') ? true : next;
 }
 
 // --- load shards -----------------------------------------------------------
