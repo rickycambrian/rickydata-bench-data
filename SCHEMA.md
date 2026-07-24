@@ -1,7 +1,13 @@
 # Schema
 
 `schema_version` follows the pattern **`major.minor`**. A **minor** bump is additive (new
-fields only); a **major** bump can rename or remove fields. Current: **`1.1`**.
+fields only); a **major** bump can rename or remove fields. Current: **`1.2`**.
+
+**1.2 (additive):** new `difficulty-*.jsonl.gz` shard — per-task difficulty snapshot
+(blend-v1 score from observed outcomes). Unlike `tasks-*` (dimension deltas), the
+difficulty shard is a **full re-emit in every release**: the score is mutable and
+strengthens as more benchmarks run, so the latest release wins (dedupe by `item`,
+keep max `as_of`). 1.0/1.1 consumers are unaffected.
 
 **1.1 (additive):** run rows gain `task_complexity` / `task_issue_type` (denormalized from the
 task join, like `task_language`), `reproduce_command` (the exact CLI line to re-run the
@@ -175,6 +181,31 @@ signature over the canonical manifest — shipped byte-identical so signatures v
 
 ## `traces-*.jsonl.gz`
 `run_id`, `trace_id`, `graph` (redacted public agent trace read model).
+
+## `difficulty-*.jsonl.gz` — one row per task item (full snapshot, schema ≥ 1.2)
+
+Per-task difficulty from observed benchmark outcomes. **Snapshot semantics** — every
+release re-emits the full table; keep the row with the max `as_of` per `item` and join
+runs via `item` (`repo#issue`).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `item` | string | `repo#issue` — join key to run rows |
+| `repo` | string \| null | |
+| `difficulty_score` | number \| null | **headline, 0–100** — `blend-v1: 0.7·solve_pct + 0.3·cost_pct`; null when only one model attempted (unfittable) |
+| `solve_pct` | number \| null | midrank percentile of Rasch difficulty (all-pass → 0, all-fail → 100) |
+| `cost_pct` | number \| null | midrank percentile of `cost_to_solve_usd`; no successful run → 100 |
+| `rasch_difficulty` | number \| null | 1-PL item difficulty (deterministic JMLE) |
+| `rasch_se` | number \| null | standard error — how much evidence backs the estimate |
+| `rasch_excluded` | string \| null | `all_pass` \| `all_fail` when degenerate |
+| `discrimination` | number \| null | |
+| `zone` | string \| null | `trivial` \| `premium_separable` \| `beyond_frontier` \| `partial_credit_hard` \| `no_frontier_data` |
+| `mean_success_rate` | number \| null | raw solve rate across all runs |
+| `cost_to_solve_usd` | number \| null | median PAYG **theoretical** cost over successful runs |
+| `cheapest_solving_model` | string \| null | |
+| `n_successful_runs`, `n_attempts`, `n_models`, `n_tiers` | number \| null | evidence counts |
+| `frontier_ceiling`, `cheap_mean`, `gap` | number \| null | tier separation facets |
+| `as_of` | string \| null | seed `generated_at` (max source-row timestamp, clock-free) |
 
 ---
 

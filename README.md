@@ -37,11 +37,19 @@ node scripts/bench-cli.mjs routing --out cells.csv
                                                  # per-(item, config) routing cells → CSV
 node scripts/bench-cli.mjs export --shard runs --csv runs.csv
                                                  # flat CSV for spreadsheets / pandas / DuckDB
+node scripts/bench-cli.mjs leaderboard --by=model --min-difficulty 70
+                                                 # who actually solves the hard tasks?
 ```
 
 Useful flags: `--language python|rust|…`, `--complexity simple|medium|high`, `--repo owner/name`,
 `--issue-type bug_fix|…`, `--tier catalog` (only catalogued configs), `--min-runs N`, `--json`.
 Infra-caused failures (`infra_excluded`) are always excluded from rates.
+
+**Difficulty filters** (schema ≥ 1.2): `--min-difficulty 0-100`, `--max-difficulty 0-100`,
+`--difficulty-zone premium_separable|beyond_frontier|trivial|…`. The score is measured from
+observed outcomes — `0.7 × solvability percentile + 0.3 × cost-to-solve percentile` — and is
+recomputed as more benchmarks land, so it sharpens over time. Runs on items with no difficulty
+row yet are excluded from difficulty-filtered views.
 
 `fetch` wraps `scripts/fetch-dataset.mjs`, which also works standalone:
 
@@ -145,11 +153,14 @@ certificate chain against the pinned AMD root — entirely offline, no network.
 | `diffs-*.jsonl.gz`   | run    | the agent's generated patch (sanitized) |
 | `proofs-*.jsonl.gz`  | run    | the self-contained TEE attestation bundle (verbatim, for signature checks) |
 | `traces-*.jsonl.gz`  | run    | the public agent trace read model |
+| `difficulty-*.jsonl.gz` | task item | measured per-task difficulty: `difficulty_score` (0–100), solvability + cost-to-solve components, Rasch estimate + SE, zone, evidence counts |
 | `manifest-*.json`    | —      | sha256 + byte + row count for every asset; `run_ids`, campaigns, date range |
 
 `configs` and `tasks` are **dimension deltas** — a daily ships only entries new since the last
 release; monthly snapshots carry the full set. Run/diff/proof/trace shards are disjoint by
-`run_id` across dailies. See [SCHEMA.md](./SCHEMA.md) for every field.
+`run_id` across dailies. `difficulty` is different: it is a **full snapshot in every release**
+(the score is mutable and keeps updating), so take the newest release's shard, or dedupe by
+`item` keeping max `as_of`. See [SCHEMA.md](./SCHEMA.md) for every field.
 
 ### Eligibility (what makes it into the data)
 

@@ -17,6 +17,8 @@
 //   --tier catalog         only catalog-resolved configs (default: both tiers)
 //   --production           only apples-to-apples leaderboard-cohort runs
 //   --min-runs 5           hide groups with fewer runs (leaderboard: 5, best: 3)
+//   --min-difficulty 70    filter: blend-v1 difficulty score 0-100 (also --max-difficulty)
+//   --difficulty-zone premium_separable   filter: difficulty zone
 //   --json                 machine-readable output instead of a table
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -87,6 +89,18 @@ function loadTasks(dataDir) {
   return byId;
 }
 
+// difficulty-* is a full snapshot per release (schema 1.2): latest as_of per item wins.
+let _difficulty;
+function loadDifficulty(root) {
+  if (_difficulty) return _difficulty;
+  _difficulty = new Map();
+  for (const row of findShardFiles(root, 'difficulty-').flatMap(readJsonl)) {
+    const prev = _difficulty.get(row.item);
+    if (!prev || String(row.as_of ?? '') > String(prev.as_of ?? '')) _difficulty.set(row.item, row);
+  }
+  return _difficulty;
+}
+
 // schema 1.0 rows lack task_complexity/task_issue_type on the run — join from tasks shard.
 function facetsOf(run, tasks) {
   const task = tasks.get(run.task_id);
@@ -105,6 +119,15 @@ function applyFilters(runs, tasks) {
   const issueType = arg('issue-type', null);
   const repo = arg('repo', null);
   const production = arg('production', false);
+  const minDifficulty = arg('min-difficulty', null);
+  const maxDifficulty = arg('max-difficulty', null);
+  const difficultyZone = arg('difficulty-zone', null);
+  const wantsDifficulty = minDifficulty != null || maxDifficulty != null || difficultyZone != null;
+  const difficulty = wantsDifficulty ? loadDifficulty(dataDir) : null;
+  if (wantsDifficulty && difficulty.size === 0) {
+    console.error(`no difficulty-*.jsonl.gz under ${dataDir} — difficulty filters need a schema ≥1.2 release`);
+    process.exit(1);
+  }
   return runs.filter((run) => {
     if (run.infra_excluded) return false; // infra failures never count against a model
     if (production && !run.production_evidence) return false;
@@ -113,6 +136,13 @@ function applyFilters(runs, tasks) {
     if (complexity && f.complexity !== complexity) return false;
     if (issueType && f.issue_type !== issueType) return false;
     if (repo && f.repo !== repo) return false;
+    if (difficulty) {
+      const d = run.item ? difficulty.get(run.item) : null;
+      if (!d) return false; // no difficulty row -> excluded from difficulty-filtered views
+      if (minDifficulty != null && !(d.difficulty_score >= Number(minDifficulty))) return false;
+      if (maxDifficulty != null && !(d.difficulty_score <= Number(maxDifficulty))) return false;
+      if (difficultyZone != null && d.zone !== difficultyZone) return false;
+    }
     return true;
   });
 }
