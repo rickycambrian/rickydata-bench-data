@@ -11,11 +11,21 @@ are cast back to numbers on export.
 
 ---
 
-## `runs-*.jsonl.gz` — one row per run
+## `runs-*.jsonl.gz` / `runs-config-name-only-*.jsonl.gz` — one row per run
 
-The leaderboard table. Carries **both** the raw config identity (as recorded) and the
-**resolved** identity (normalized against the config catalog) so you can group correctly
-without re-deriving anything.
+The leaderboard table, split into **two config-identity tiers** — both are
+`proof_verified` and pass `verify-proof.mjs` (every run in this dataset is TEE-attested):
+
+- **`runs-*.jsonl.gz`** — `config_name` resolves to the config catalog (`identity_tier: "catalog"`).
+  The primary shard; take only this for a clean, catalogued leaderboard.
+- **`runs-config-name-only-*.jsonl.gz`** — TEE-verified, but the config isn't in the
+  catalog yet (newer engines/arms, e.g. `kimi-k2.7`, `routed-*`) so identity is the raw
+  `config_name` (`identity_tier: "config_name_only"`, `config_id_resolved: null`). Still
+  fully usable for routing — `config_name` is a valid grouping key. Concatenate both
+  shards for maximum coverage.
+
+Each row carries the raw config identity (as recorded) **and** the resolved identity
+(normalized against the catalog) so you can group correctly without re-deriving anything.
 
 ### Identity & provenance
 | Field | Type | Notes |
@@ -52,7 +62,8 @@ without re-deriving anything.
 ### Resolved config identity (normalized)
 | Field | Type | Notes |
 |-------|------|-------|
-| `config_id_resolved` | string \| null | catalog id; `null` (flagged, not fabricated) when `config_name` has no catalog entry |
+| `identity_tier` | `catalog` \| `config_name_only` | which run shard the row lives in (see the two-shard split above) |
+| `config_id_resolved` | string \| null | catalog id; `null` (flagged, not fabricated) when `config_name` has no catalog entry — always `null` for `config_name_only` rows |
 | `base_config` | string | catalog id with overlay stripped |
 | `tool_overlay` | string \| null | overlay arm (`ponytail`, `evo-…`) |
 | `canonical_model` | string \| null | normalized model identity |

@@ -43,6 +43,12 @@ after it, downloads each release's assets, and checks every asset's sha256 again
 The shards are newline-delimited JSON, gzipped. Nothing is partitioned by config — download
 flat and filter on the resolved columns.
 
+The run rows come in **two config-identity tiers**, both TEE-attested (all `proof_verified`):
+`runs-*.jsonl.gz` (catalog-resolved config) and `runs-config-name-only-*.jsonl.gz`
+(TEE-verified but the config isn't catalogued yet — identity is the raw `config_name`). The
+`runs-*` glob matches **both**; add `WHERE identity_tier = 'catalog'` (or read only the exact
+`runs-<tag>` file) to restrict to the catalogued leaderboard.
+
 ```sql
 -- DuckDB: solve rate by canonical model, leaderboard-grade rows only
 SELECT canonical_model, model_tier,
@@ -79,13 +85,15 @@ a resolved config, a pass signal (`proof_verified` / `test_passed`), and
 
 ```python
 # per-(item, config) solve rate + mean cost — the routing substrate
+# runs-* globs both tiers; group by config_name so config_name_only rows (config_id_resolved
+# is null) keep their own identity instead of collapsing into one null bucket.
 import gzip, json, glob, pandas as pd
 rows = [json.loads(l) for f in glob.glob('data/**/runs-*.jsonl.gz', recursive=True)
-        for l in gzip.open(f, 'rt') if 'runs-' in f]
+        for l in gzip.open(f, 'rt')]
 df = pd.DataFrame(rows)
 df = df[df['item'].notna() & ~df['infra_excluded']]        # drop synthetic + infra failures
 df['cost'] = df['cost_metrics'].apply(lambda c: (c or {}).get('theoretical_cost_usd'))
-cells = df.groupby(['item', 'config_id_resolved']).agg(
+cells = df.groupby(['item', 'config_name']).agg(
     n=('run_id', 'size'),
     passes=('test_passed', 'sum'),
     solve_rate=('test_passed', 'mean'),
@@ -111,7 +119,8 @@ certificate chain against the pinned AMD root — entirely offline, no network.
 
 | Shard | One row per | Contents |
 |-------|-------------|----------|
-| `runs-*.jsonl.gz`    | run    | outcome, cost, raw **and** resolved config identity, proof status — the leaderboard table |
+| `runs-*.jsonl.gz`    | run    | catalog-resolved-config runs (`identity_tier: catalog`) — outcome, cost, raw **and** resolved config identity, proof status; the leaderboard table |
+| `runs-config-name-only-*.jsonl.gz` | run | TEE-verified runs whose config isn't catalogued yet (`identity_tier: config_name_only`); same columns, `config_id_resolved: null` |
 | `configs-*.jsonl.gz` | config | catalog tuple (provider, model, engine, mode, toolset, reasoning effort) + normalization |
 | `tasks-*.jsonl.gz`   | task   | the public issue: repo, language, complexity, sanitized prompt, **gold_diff** (merged PR), test command |
 | `diffs-*.jsonl.gz`   | run    | the agent's generated patch (sanitized) |
@@ -131,9 +140,15 @@ A run is published when **all** hold:
   `subscription_causal_routing_v1_*`, `routing_confirmatory_*`, `tools_comparison_*`,
   `ponytail_leanness_*`, `frontier_reference_*`, `cascade_routing_*`);
 - it is **not** a non-production campaign (canary/test/debug/smoke/…);
-- `proof_verified === true` (pre-proof-era rows are excluded entirely);
+- `proof_verified === true` (pre-proof-era / non-TEE rows are excluded entirely — the
+  dataset is 100% TEE-attested);
 - it is not an artifact/canary model row;
 - it hasn't been published before.
+
+Every published run is then placed in one of two config-identity tiers (see the shard table
+above): **`catalog`** (config resolves to the catalog) or **`config_name_only`** (TEE-verified
+but not catalogued yet). Both are proof-verified; the split is a shard boundary, not an
+eligibility gate.
 
 Research campaigns (wiki_*, fleet_routing_*, E0xx, causal_proof_*, …) are **never** published.
 
