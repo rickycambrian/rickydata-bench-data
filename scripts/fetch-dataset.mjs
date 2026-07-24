@@ -14,10 +14,15 @@ const REPO = process.env.DATA_REPO ?? 'rickycambrian/rickydata-bench-data';
 const RAW = `https://raw.githubusercontent.com/${REPO}/main`;
 const API = `https://api.github.com/repos/${REPO}`;
 
+const BOOL_FLAGS = new Set(['verify', 'snapshot-only']);
 function arg(name, fallback) {
-  const hit = process.argv.find((a) => a === `--${name}` || a.startsWith(`--${name}=`));
-  if (!hit) return fallback;
-  return hit.includes('=') ? hit.slice(hit.indexOf('=') + 1) : true;
+  // accepts both --name=value and --name value
+  const idx = process.argv.findIndex((a) => a === `--${name}` || a.startsWith(`--${name}=`));
+  if (idx === -1) return fallback;
+  const hit = process.argv[idx];
+  if (hit.includes('=')) return hit.slice(hit.indexOf('=') + 1);
+  const next = process.argv[idx + 1];
+  return BOOL_FLAGS.has(name) || next === undefined || next.startsWith('--') ? true : next;
 }
 
 async function getJson(url) {
