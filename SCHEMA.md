@@ -135,14 +135,21 @@ sibling shards, the identity fields are redacted out).
 | `task_id` | string | primary key |
 | `source_repo` | string | |
 | `issue_number` | number | |
+| `issue_title` | string \| null | |
+| `issue_type` | string | |
 | `language` | string | |
 | `complexity` | string | |
-| `issue_type` | string | |
+| `labels` | array \| null | GitHub issue labels |
 | `base_commit` | string | pre-fix commit (public) |
 | `sanitized_prompt` | string | the issue text given to the agent |
 | `gold_diff` | string | the **merged human PR** — the grading gold |
 | `gold_files_changed` | array | |
 | `test_command` | string | the correctness gate |
+| `test_framework` | string \| null | |
+| `task_version` | string \| null | fixture revision |
+| `created_at` | string (ISO 8601) \| null | when the fixture was registered |
+
+A task is identified by `repo#issue`; it carries no `campaign_id` (a fixture can be reused across campaigns, and the column can hold a non-public research-campaign name).
 
 ---
 
