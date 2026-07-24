@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "tag": "snapshot-2026.07-genesis",
+    "kind": "snapshot",
+    "published_at": "2026-07-24T11:26:30.747Z",
+    "schema_version": "1.0",
+    "runs": 5086,
+    "manifest_sha256": "2e63bbd6aec4a582eb8b66ced26dc13982ed6747dc3be340169923964fb2c8ef"
+  }
+]
