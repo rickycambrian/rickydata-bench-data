@@ -1,7 +1,11 @@
 # Schema
 
 `schema_version` follows the pattern **`major.minor`**. A **minor** bump is additive (new
-fields only); a **major** bump can rename or remove fields. Current: **`1.2`**.
+fields only); a **major** bump can rename or remove fields. Current: **`1.3`**.
+
+**1.3 (additive):** `difficulty-*` rows gain `language` (normalized repo language, null when
+unknown — 164/176 items today). Run rows already carried `task_language`; this makes the
+difficulty table filterable on its own, without a join back to runs.
 
 **1.2 (additive):** new `difficulty-*.jsonl.gz` shard — per-task difficulty snapshot
 (blend-v1 score from observed outcomes). Unlike `tasks-*` (dimension deltas), the
@@ -205,6 +209,7 @@ runs via `item` (`repo#issue`).
 | `cheapest_solving_model` | string \| null | |
 | `n_successful_runs`, `n_attempts`, `n_models`, `n_tiers` | number \| null | evidence counts |
 | `frontier_ceiling`, `cheap_mean`, `gap` | number \| null | tier separation facets |
+| `language` | string \| null | schema ≥ 1.3 — normalized repo language (`rust`, `python`, …); null when neither KFDB nor the core-set metadata knows it |
 | `as_of` | string \| null | seed `generated_at` (max source-row timestamp, clock-free) |
 
 ---
