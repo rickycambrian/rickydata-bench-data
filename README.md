@@ -15,8 +15,10 @@ gzipped JSON Lines shards — so `git clone` stays tiny and you download only th
 - **Monthly** snapshots (`snapshot-YYYY.MM`) — a self-contained full copy.
 - Genesis snapshot: `snapshot-2026.07-genesis`.
 
-A day with no new eligible runs publishes **nothing** — there are gaps in the daily sequence
-by design.
+A release ships when there are new eligible runs **or** an updated difficulty snapshot (the
+score is recomputed from all accumulated evidence, so it can move on its own). A day with
+neither publishes nothing — there are gaps in the daily sequence by design. A difficulty-only
+release carries just `difficulty-*.jsonl.gz` and its manifest; empty shards are never uploaded.
 
 ---
 
