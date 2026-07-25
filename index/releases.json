@@ -6,5 +6,13 @@
     "schema_version": "1.1",
     "runs": 5086,
     "manifest_sha256": "f64e5a8c00e69049b3312523f6ba6d80ab54dd4cb08ffda14e28f4d5f14db7fb"
+  },
+  {
+    "tag": "v2026.07.25",
+    "kind": "daily",
+    "published_at": "2026-07-25T11:21:11.782Z",
+    "schema_version": "1.2",
+    "runs": 0,
+    "manifest_sha256": "e3c3aa7cc4f2b1d7cbdca6e293f31cf455379e974563a2a3288b999f54b59cb9"
   }
 ]
