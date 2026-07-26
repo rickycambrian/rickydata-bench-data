@@ -22,5 +22,13 @@
     "schema_version": "1.3",
     "runs": 230,
     "manifest_sha256": "90418008bf6e7d9f92cf04ba53d936bd1749b900502f8ddfaa5d4ed0e3265071"
+  },
+  {
+    "tag": "snapshot-2026.07",
+    "kind": "snapshot",
+    "published_at": "2026-07-26T16:01:09.674Z",
+    "schema_version": "1.2",
+    "runs": 5346,
+    "manifest_sha256": "6fbc305a94ef7f3147450f301173c37bdd9908a0b18bd7938567803f4d2d12e6"
   }
 ]
