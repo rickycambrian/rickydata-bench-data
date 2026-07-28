@@ -26,10 +26,10 @@
   {
     "tag": "snapshot-2026.07",
     "kind": "snapshot",
-    "published_at": "2026-07-27T13:47:40.529Z",
-    "schema_version": "1.4",
-    "runs": 5814,
-    "manifest_sha256": "3caf395ee03d232f74b219bac927a11a13db622ecd7b2d14ea64515dc16a7953"
+    "published_at": "2026-07-28T23:37:21.406Z",
+    "schema_version": "1.5",
+    "runs": 8539,
+    "manifest_sha256": "ceb1574e0d02fb90c833feeb8a6855c1445651c93638fadf8350a290e44e1e5e"
   },
   {
     "tag": "v2026.07.27",
