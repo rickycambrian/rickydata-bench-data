@@ -1,7 +1,27 @@
 # Schema
 
 `schema_version` follows the pattern **`major.minor`**. A **minor** bump is additive (new
-fields only); a **major** bump can rename or remove fields. Current: **`1.3`**.
+fields only); a **major** bump can rename or remove fields. Current: **`1.5`**.
+
+**1.5 (additive):** the publication surface widened — every TEE-verified run of a real task is
+published, not just the ones whose campaign sat on an allowlist of prefixes (that allowlist was
+withholding ~1,950 valid runs). Run rows gain three fields so consumers can tell the cohorts
+apart and score them correctly:
+
+- `campaign_class` — `"leaderboard"` (the apples-to-apples cohort), `"study"` (a real experiment
+  on a deliberately chosen issue set — valid evidence, **not** comparable to the leaderboard),
+  or `"probe"` (infra canary/smoke — real TEE runs that re-run a known-good issue, so they must
+  not enter an aggregate).
+- `score_status` — `"scored"` | `"unscored"` | `"infra_excluded"`. Only `scored` rows belong in
+  a denominator.
+- `solved` — the canonical verdict (`== success`) on scored rows, `null` otherwise. **Score on
+  this, not on `test_passed`**, which only the L4 harness paths populate.
+
+**1.4 (additive):** run rows gain `gold_lookup` (the run fetched the issue's own merged PR — a
+pass obtained that way is not a solve; `null` when there is no trace to judge from). Task rows
+gain PR-target identity (`target_kind` / `pull_request_number` / `external_instance_id`) so
+SWE-bench-native instances, which target a merged PR and carry `issue_number: 0`, get a usable
+`item`.
 
 **1.3 (additive):** `difficulty-*` rows gain `language` (normalized repo language, null when
 unknown — 164/176 items today). Run rows already carried `task_language`; this makes the
@@ -43,6 +63,11 @@ The leaderboard table, split into **two config-identity tiers** — both are
 
 Each row carries the raw config identity (as recorded) **and** the resolved identity
 (normalized against the catalog) so you can group correctly without re-deriving anything.
+
+Both shards mix campaign classes. A leaderboard query needs `campaign_class = 'leaderboard'`
+**and** `score_status = 'scored'`; without the first it mixes in study cohorts whose issue sets
+were chosen for an experiment, and without the second it counts infra failures as model
+failures.
 
 ### Identity & provenance
 | Field | Type | Notes |
@@ -89,16 +114,19 @@ Each row carries the raw config identity (as recorded) **and** the resolved iden
 | `canonical_model` | string \| null | normalized model identity |
 | `model_tier` | string \| null | frontier/mid/cheap tiering |
 | `billing_class` | `subscription` \| `metered` | subscription = $0 marginal spend |
-| `production_evidence` | boolean | true = apples-to-apples leaderboard cohort |
+| `production_evidence` | boolean | true = apples-to-apples leaderboard cohort (== `campaign_class == "leaderboard"`) |
+| `campaign_class` | `leaderboard` \| `study` \| `probe` | how to read this row's campaign (schema ≥ 1.5); `probe` rows are infra canaries and must not enter an aggregate |
 
 ### Outcome
 | Field | Type | Notes |
 |-------|------|-------|
-| `success` | boolean | |
-| `test_passed` | boolean | the correctness gate |
+| `solved` | boolean \| null | **the verdict to score on** (schema ≥ 1.5). `== success` on scored rows, `null` when `score_status != "scored"` |
+| `score_status` | `scored` \| `unscored` \| `infra_excluded` | whether the row belongs in a denominator (schema ≥ 1.5) |
+| `success` | boolean | the canonical solve signal, set by the runner from verification |
+| `test_passed` | boolean \| null | **narrower than `success`** — only the L4 harness paths populate it. Scoring on this counts every L1/L3-verified solve as a failure |
 | `quality_score` | object \| null | parsed; `composite` is the closeness-to-merged score |
-| `verification_level` | string | |
-| `evidence_class` | string | |
+| `verification_level` | string | L0–L4, or `runner_or_provider_error` for infra |
+| `evidence_class` | string | which grading path produced the verdict |
 | `proof_verified` | boolean | always `true` in this dataset |
 | `proof_verification_status` / `attestation_verdict` | string | |
 | `proof_manifest_hash` | string | |
