@@ -4,8 +4,7 @@ Complete, TEE-verified public benchmark data behind **[bench.rickydata.org](http
 
 Every row is a real coding-agent run on a **public** GitHub issue, solving the issue and
 scoring the result against the merged human PR — carried out inside an AMD SEV-SNP Trusted
-Execution Environment and shipped with a self-contained cryptographic proof. There is **no
-private tenant data here** and no run that isn't proof-verified.
+Execution Environment and shipped with a self-contained cryptographic proof.
 
 This repo holds only docs, schemas, and a small ledger. **The data ships as
 [GitHub Release](https://github.com/rickycambrian/rickydata-bench-data/releases) assets** —
