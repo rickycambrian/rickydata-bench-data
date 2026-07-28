@@ -23,8 +23,15 @@ release carries just `difficulty-*.jsonl.gz` and its manifest; empty shards are 
 
 ## Quick start — 60 seconds, no install
 
-Everything below uses only the Node standard library. Clone, then:
+Everything below uses only the Node standard library. 
 
+First clone:
+```bash
+git clone https://github.com/rickycambrian/rickydata-bench-data.git
+cd rickydata-bench-data
+```
+
+Then:
 ```bash
 node scripts/bench-cli.mjs fetch                 # download + sha256-verify the dataset → ./data
 node scripts/bench-cli.mjs info                  # what you have: runs, tasks, languages, dates
