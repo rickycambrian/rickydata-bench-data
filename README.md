@@ -278,20 +278,36 @@ versions.** Nothing in that chain requires trusting rickydata. The report's `MEA
 image at launch; the `image digest` line is the OCI digest of the container that produced it.
 
 `--strict` adds a ninth check: the report's own ECDSA-P384 signature against the VCEK shipped in
-the same bundle. **This currently fails on most rows** — see [Known limitation](#known-limitation-vcek-pairing) below.
+the same bundle. It passes on **every bundle produced from 2026-07-17 onward** and fails on most
+older ones — see [Known limitation](#known-limitation-vcek-pairing-on-pre-2026-07-17-bundles) below.
 
-#### Known limitation: VCEK pairing
+#### Known limitation: VCEK pairing on pre-2026-07-17 bundles
 
-Each SEV-SNP report is signed by the VCEK of the specific CPU that produced it. On the current
-corpus the gateway caches one VCEK per TCB rather than per (chip, TCB), so ~77% of bundles ship
-a VCEK from a *different host in the same fleet*. Checks 1–8 all pass; check 9 does not.
+Each SEV-SNP report is signed by the VCEK of the specific CPU that produced it. The gateway used
+to cache one VCEK per TCB rather than per (chip, TCB), so on a 9-chip fleet a bundle could ship a
+VCEK belonging to a *different host*. Checks 1–8 pass on those rows; check 9 does not.
 
-Concretely: every report we have examined verifies against *some* VCEK in the fleet (9 distinct
-certs), so the reports are genuine AMD hardware output — but you cannot complete that last step
-using only the bytes in the bundle, which is exactly what "self-contained proof" should mean.
-That is a gateway-side bug, tracked for a fix; until then check 9 is opt-in so the other eight
-stay usable. If you need per-run hardware pairing today, use `--strict` and keep the ~23% that
-pass.
+That was fixed on 2026-07-16 (the gateway now discards a VCEK that does not verify the report in
+hand and refetches from AMD KDS). The corpus shows the cutover cleanly:
+
+| bundles | check 9 passes |
+|---|---|
+| all 8,539 | 2,926 (34.3%) |
+| created 2026-07-17 or later | 2,917 / 2,917 (**100%**) |
+
+The older rows are not fabricated — the reports do verify against the correct VCEK, which you can
+fetch yourself from AMD:
+
+```
+https://kdsintf.amd.com/vcek/v1/Milan/<CHIP_ID hex>?blSPL=&teeSPL=&snpSPL=&ucodeSPL=
+```
+
+`CHIP_ID` is bytes `0x1A0..0x1E0` of the report; the four SPL values are single bytes inside
+`REPORTED_TCB` at `0x180..0x188` — `blSPL` at offset 0, `teeSPL` 1, `snpSPL` 6, `ucodeSPL` 7.
+Spot-checking one
+chip this way verified 300/300 of its pre-fix reports. What those bundles lack is *self-containment*
+— you need one fetch from AMD to close the chain — which is why check 9 is opt-in rather than on
+by default. Use `--strict` if you want only rows that prove hardware pairing from their own bytes.
 
 ---
 
