@@ -372,6 +372,24 @@ reached a verdict) and score on `solved`, not `test_passed`.
 
 ---
 
+## Research datasets
+
+Alongside the daily run shards, this repo publishes versioned research artifacts on
+their own release tags:
+
+- **`step-qrels-v0`** — pooled, graded relevance judgments over agent-trace *steps*
+  (TREC-qrels style): 38 tasks, 106 proof-verified runs, 5,650 steps pooled into 4,713
+  action fingerprints, 593 judged against the merged human PR. Grades need no LLM
+  judge; unjudged rows are scored bpref-style, not discarded. Schema in
+  [SCHEMA.md](SCHEMA.md#research-dataset-step-qrels-separate-release-track); integrity
+  hashes in [`index/step-qrels-v0.json`](index/step-qrels-v0.json).
+
+  ```bash
+  gh release download step-qrels-v0 -R rickycambrian/rickydata-bench-data
+  ```
+
+---
+
 ## Run your own benchmarks (non-admin path)
 
 You do **not** need to be an operator to benchmark a coding agent on a public repo. With your

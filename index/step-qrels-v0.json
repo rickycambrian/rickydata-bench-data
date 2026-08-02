@@ -1,0 +1,44 @@
+{
+  "name": "step-qrels",
+  "version": "v0",
+  "kind": "research-dataset",
+  "release_tag": "step-qrels-v0",
+  "provenance": "gold_anchored_weak/v0",
+  "generated_with": "rickydata_bench scripts/build-step-qrels.mjs",
+  "source_commit": "bf941e7",
+  "generated_at": "2026-08-02T06:57:39.000Z",
+  "campaign_id": "benchmark_matrix_current",
+  "fingerprint_scheme": "sq0:<tool>:<depth_bucket>:<sha256-24hex>",
+  "grade_scale": {
+    "0": "unjudged (judged:false) — no cheap gold signal; treat bpref-style, not as irrelevant",
+    "1": "READ-tool step reads a gold-changed file, or step runs the derived gold test",
+    "3": "EDIT-tool step writes a gold-changed file"
+  },
+  "corpus": {
+    "tasks_with_runs": 38,
+    "runs_used": 106,
+    "runs_candidate": 574,
+    "runs_infra_excluded": 282,
+    "runs_trace_unreadable": 140,
+    "wrapper_only_runs": 46,
+    "steps": 5650,
+    "distinct_fingerprints": 4713,
+    "judged_fingerprints": 593,
+    "judged_fraction": 0.1258,
+    "pooling_compression_ratio": 1.1988
+  },
+  "assets": [
+    {
+      "name": "step-qrels-v0.jsonl.gz",
+      "sha256": "e82e0f268154bc235af113d05c1a0826555149afdab4e3238fb5a21ac97d5efa",
+      "bytes": 101552,
+      "rows": 4713
+    },
+    {
+      "name": "step-qrels-v0-summary.json",
+      "sha256": "b486a8dd69a9603dbeda0c04cae8f9c4a638f0eddde9f173a947bd4a75aa6c92",
+      "bytes": 25675,
+      "rows": 1
+    }
+  ]
+}

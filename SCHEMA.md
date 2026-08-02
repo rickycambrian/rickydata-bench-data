@@ -253,3 +253,39 @@ runs via `item` (`repo#issue`).
 | `campaigns[]` | distinct campaigns present |
 | `counts_by_config` | `{config_name: count}` |
 | `full_fidelity_since` | (optional) cutover date after which diffs/traces are full-fidelity vs legacy-truncated |
+
+---
+
+## Research dataset: `step-qrels` (separate release track)
+
+Pooled, graded relevance judgments over agent-trace *steps*, in the TREC-qrels
+tradition: a judgment attaches to a deterministic action fingerprint, so it transfers
+to any run that repeats the action. Versioned independently of the daily schema
+(`v0`, `v1`, …); ships as release tag `step-qrels-v<N>` with a committed manifest in
+`index/step-qrels-v<N>.json`. Built from the same public, proof-verified runs
+as the daily shards; grades are anchored to the merged human PR already published in
+the `tasks` shard (`gold_files_changed`, `test_command`), so the file introduces no
+new gold surface. Commands and arguments appear only as sha256 digests.
+
+### `step-qrels-v0.jsonl.gz` — one row per pooled fingerprint
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `task_id` | string (uuid) | → `tasks` shard |
+| `repo` / `issue` | string / number | `repo#issue` identity |
+| `fingerprint` | string | `sq0:<tool>:<depth_bucket>:<24-hex digest>` over (tool, normalized repo-relative paths, command digest, args digest) |
+| `tool` | string | normalized tool name (read/edit/bash/agent/…) |
+| `files` | array | repo-relative paths the step touched (already public via the `traces` shard) |
+| `depth_bucket` | `d0-2` \| `d3-9` \| `d10+` \| `d_unknown` | position of the step in its run |
+| `grade` | 0 \| 1 \| 3 | 3 = edit-tool writes a gold-changed file; 1 = read-tool reads one, or the step runs the derived gold test; 0 = unjudged |
+| `judged` | boolean | `false` means *no cheap gold signal*, not irrelevant — score bpref-style |
+| `provenance` | string | labeling method, `gold_anchored_weak/v0` |
+| `support` | number | how many distinct runs contained this fingerprint |
+| `occurrences` | number | total step occurrences across those runs |
+| `configs` | array | config names of the contributing runs (join to `runs` shards) |
+| `solved_support` / `failed_support` | number | contributing-run split by run outcome |
+
+`step-qrels-v0-summary.json` carries the corpus card: per-task funnel
+(runs considered → infra-excluded → trace-unreadable → wrapper-only → used), pooled
+counts, judged fractions, and the trace-completeness tiers. Per-fingerprint run-id
+attribution is planned for v1; v0 attributes contributing runs at config granularity.
